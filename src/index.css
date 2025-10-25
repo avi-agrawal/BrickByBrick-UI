@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+}
+
+/* Notification Animations */
+@keyframes slideInFromRight {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutToRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+}
+
+.animate-in {
+  animation: slideInFromRight 0.3s ease-out;
+}
+
+.animate-out {
+  animation: slideOutToRight 0.3s ease-in;
+}
+
+/* Custom notification styles */
+.notification-enter {
+  animation: slideInFromRight 0.3s ease-out;
+}
+
+.notification-exit {
+  animation: slideOutToRight 0.3s ease-in;
+}
+
+/* Notification hover effects */
+.notification-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease-in-out;
+}
+
+/* Notification progress bar animation */
+@keyframes progressBar {
+  from {
+    width: 100%;
+  }
+
+  to {
+    width: 0%;
+  }
+}
+
+.notification-progress {
+  position: relative;
+  overflow: hidden;
+}
+
+.notification-progress::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+  animation: progressBar var(--duration, 5000ms) linear forwards;
+}
+
+/* Success notification progress */
+.notification-progress-success::after {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+
+/* Error notification progress */
+.notification-progress-error::after {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+/* Warning notification progress */
+.notification-progress-warning::after {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+
+/* Info notification progress */
+.notification-progress-info::after {
+  background: linear-gradient(90deg, #3b82f6, #1d4ed8);
+}
