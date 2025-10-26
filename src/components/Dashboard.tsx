@@ -7,7 +7,7 @@ import Learning from './Learning';
 import Revision from './Revision';
 import Roadmaps from './Roadmaps';
 import AdvancedAnalytics from './AdvancedAnalytics';
-import type { Problem } from '../types';
+import type { Problem, LearningItem, RevisionItem, Roadmap } from '../types';
 import { apiClient } from '../utils/apis';
 import { AuthContext } from './AuthContext';
 import { Rocket } from 'lucide-react';
@@ -15,24 +15,44 @@ import { Rocket } from 'lucide-react';
 export const Dashboard: React.FC = () => {
     const [activeTab, setActiveTab] = useState('dashboard');
     const [problems, setProblems] = useState<Problem[]>([]);
+    const [learningItems, setLearningItems] = useState<LearningItem[]>([]);
+    const [revisionItems, setRevisionItems] = useState<RevisionItem[]>([]);
+    const [roadmaps, setRoadmaps] = useState<Roadmap[]>([]);
+    const [stats, setStats] = useState({ totalProblems: 0, weeklySolved: 0, currentStreak: 0, successRate: 0 });
+    const [loadingStats, setLoadingStats] = useState(true);
     const { user } = React.useContext(AuthContext);
     const navigate = useNavigate();
 
     useEffect(() => {
-        const fetchProblems = async () => {
+        const fetchData = async () => {
             if (!user?.id) return;
-
             try {
-                const response = await apiClient.getProblems(user.id) as { success: boolean; data: Problem[] };
-                if (response.success) {
-                    setProblems(response.data);
+                setLoadingStats(true);
+                const probs = await apiClient.getProblems(user.id) as { success: boolean; data: Problem[] };
+                if (probs.success) setProblems(probs.data);
+                const learningResp = await apiClient.getLearningItems(user.id) as { success: boolean; data: LearningItem[] };
+                if (learningResp.success) setLearningItems(learningResp.data);
+                const revisionResp = await apiClient.getRevisionItems(user.id) as { success: boolean; data: RevisionItem[] };
+                if (revisionResp.success) setRevisionItems(revisionResp.data);
+                const roadmapsResp = await apiClient.getRoadmaps(user.id) as { success: boolean; data: Roadmap[] };
+                if (roadmapsResp.success) setRoadmaps(roadmapsResp.data);
+                const analytics = await apiClient.getAnalytics(user.id) as { success: boolean; data: any };
+                if (analytics.success && analytics.data?.problemStats) {
+                    const ps = analytics.data.problemStats;
+                    setStats({
+                        totalProblems: ps.totalProblems || 0,
+                        weeklySolved: ps.weeklySolved || 0,
+                        currentStreak: ps.currentStreak || 0,
+                        successRate: ps.successRate || 0
+                    });
                 }
-            } catch (error) {
-                console.error('Error fetching problems:', error);
+            } catch (e) {
+                console.error('Dashboard load error:', e);
+            } finally {
+                setLoadingStats(false);
             }
         };
-
-        fetchProblems();
+        fetchData();
     }, [user?.id]);
 
     const handleSettingsClick = () => {
@@ -48,26 +68,45 @@ export const Dashboard: React.FC = () => {
                     <div className="space-y-6">
                         {/* Welcome Section */}
                         <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 rounded-xl shadow-2xl border border-blue-500 p-8 relative overflow-hidden min-h-[200px]">
+                            {/* Decorative background overlay */}
                             <div className="absolute inset-0 opacity-10">
-                                <div className="absolute inset-0" style={{
-                                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%233B82F6' fill-opacity='0.1'%3E%3Cpath d='M20 20c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10zm10 0c0-5.5-4.5-10-10-10s-10 4.5-10 10 4.5 10 10 10 10-4.5 10-10z'/%3E%3C/g%3E%3C/svg%3E")`,
-                                    backgroundSize: '40px 40px'
-                                }}></div>
+                                <div
+                                    className="absolute inset-0"
+                                    style={{
+                                        backgroundImage: 'radial-gradient(circle at 25% 25%, rgba(255,255,255,0.4), transparent 60%), radial-gradient(circle at 75% 70%, rgba(255,255,255,0.3), transparent 65%)'
+                                    }}
+                                />
                             </div>
-
-                            <div className="relative z-10">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex-1">
-                                        <h1 className="text-3xl font-bold text-white mb-2">
-                                            Welcome back, {user?.firstName || 'Coder'}!
-                                        </h1>
-                                        <p className="text-gray-300 text-lg font-medium">Ready to tackle some coding challenges today?</p>
-                                    </div>
-                                    <div className="hidden md:block ml-8">
-                                        <div className="w-40 h-40 flex items-center justify-center">
-                                            <Rocket size={160} className="text-blue-400" strokeWidth={1.5} />
+                            {/* Foreground content */}
+                            <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-8">
+                                <div className="space-y-3 max-w-xl">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-12 h-12 rounded-lg bg-white/10 backdrop-blur flex items-center justify-center">
+                                            <Rocket className="w-6 h-6 text-white" />
                                         </div>
+                                        <h2 className="text-2xl md:text-3xl font-bold text-white">
+                                            Welcome back{user?.firstName ? `, ${user.firstName}` : ''}!
+                                        </h2>
                                     </div>
+                                    <p className="text-blue-100 text-sm md:text-base leading-relaxed">
+                                        Track your progress, strengthen your streak, and keep pushing forward. Every solved problem builds momentum.
+                                    </p>
+                                </div>
+                                {/* Inline stats summary */}
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full md:w-auto">
+                                    {[
+                                        { label: 'Total', value: stats.totalProblems, color: 'bg-blue-500' },
+                                        { label: 'Weekly', value: stats.weeklySolved, color: 'bg-green-500' },
+                                        { label: 'Streak', value: stats.currentStreak, color: 'bg-amber-500' },
+                                        { label: 'Success', value: stats.successRate + '%', color: 'bg-violet-500' }
+                                    ].map((s, i) => (
+                                        <div key={i} className="rounded-lg bg-white/10 backdrop-blur px-3 py-3 flex flex-col items-center justify-center">
+                                            <div className={`text-xs font-medium uppercase tracking-wide text-blue-100`}>{s.label}</div>
+                                            <div className="text-lg font-semibold text-white mt-1">
+                                                {loadingStats ? '…' : s.value}
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
@@ -79,6 +118,9 @@ export const Dashboard: React.FC = () => {
                                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
                                     <RecentActivity
                                         problems={problems}
+                                        learningItems={learningItems}
+                                        revisionItems={revisionItems}
+                                        roadmaps={roadmaps}
                                         onAddProblem={() => setActiveTab('problems')}
                                     />
                                 </div>
@@ -93,119 +135,30 @@ export const Dashboard: React.FC = () => {
                                     </div>
                                     <div className="p-6">
                                         <div className="grid grid-cols-1 gap-6">
-                                            {/* Today's Progress Ring */}
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="relative w-16 h-16">
-                                                        <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
-                                                            <defs>
-                                                                <linearGradient id="blueGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                                    <stop offset="0%" stopColor="#3B82F6" />
-                                                                    <stop offset="100%" stopColor="#1D4ED8" />
-                                                                </linearGradient>
-                                                            </defs>
-                                                            <path
-                                                                className="text-gray-200"
-                                                                stroke="currentColor"
-                                                                strokeWidth="4"
-                                                                fill="none"
-                                                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                                            />
-                                                            <path
-                                                                stroke="url(#blueGradient)"
-                                                                strokeWidth="4"
-                                                                strokeLinecap="round"
-                                                                fill="none"
-                                                                strokeDasharray="60, 100"
-                                                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                                            />
-                                                        </svg>
-                                                        <div className="absolute inset-0 flex items-center justify-center">
-                                                            <span className="text-sm font-bold text-blue-600">60%</span>
+                                            {[
+                                                { label: 'Total Problems', value: stats.totalProblems, subtitle: 'All time', color: '#3B82F6' },
+                                                { label: 'Weekly Solved', value: stats.weeklySolved, subtitle: 'Last 7 days', color: '#10B981' },
+                                                { label: 'Current Streak', value: stats.currentStreak, subtitle: 'Days in a row', color: '#F59E0B' },
+                                                { label: 'Success Rate', value: stats.successRate + '%', subtitle: 'Solved vs total', color: '#8B5CF6' }
+                                            ].map((c, i) => (
+                                                <div key={i} className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="relative w-16 h-16">
+                                                            <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
+                                                                <circle cx="18" cy="18" r="16" stroke="#e5e7eb" strokeWidth="4" fill="none" />
+                                                                <circle cx="18" cy="18" r="16" stroke={c.color} strokeWidth="4" fill="none" strokeDasharray="100 100" />
+                                                            </svg>
+                                                            <div className="absolute inset-0 flex items-center justify-center">
+                                                                <span className="text-sm font-bold" style={{ color: c.color }}>{loadingStats ? '…' : c.value}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-medium text-gray-900">{c.label}</p>
+                                                            <p className="text-xs text-gray-600">{c.subtitle}</p>
                                                         </div>
                                                     </div>
-                                                    <div>
-                                                        <p className="text-sm font-medium text-gray-900">Today's Progress</p>
-                                                        <p className="text-xs text-gray-600">3/5 tasks completed</p>
-                                                    </div>
                                                 </div>
-                                            </div>
-
-                                            {/* This Week Ring */}
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="relative w-16 h-16">
-                                                        <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
-                                                            <defs>
-                                                                <linearGradient id="greenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                                    <stop offset="0%" stopColor="#10B981" />
-                                                                    <stop offset="100%" stopColor="#059669" />
-                                                                </linearGradient>
-                                                            </defs>
-                                                            <path
-                                                                className="text-gray-200"
-                                                                stroke="currentColor"
-                                                                strokeWidth="4"
-                                                                fill="none"
-                                                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                                            />
-                                                            <path
-                                                                stroke="url(#greenGradient)"
-                                                                strokeWidth="4"
-                                                                strokeLinecap="round"
-                                                                fill="none"
-                                                                strokeDasharray="80, 100"
-                                                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                                            />
-                                                        </svg>
-                                                        <div className="absolute inset-0 flex items-center justify-center">
-                                                            <span className="text-sm font-bold text-green-600">12</span>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-medium text-gray-900">This Week</p>
-                                                        <p className="text-xs text-gray-600">Problems solved</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            {/* Current Streak Ring */}
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="relative w-16 h-16">
-                                                        <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 36 36">
-                                                            <defs>
-                                                                <linearGradient id="orangeGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                                                                    <stop offset="0%" stopColor="#F59E0B" />
-                                                                    <stop offset="100%" stopColor="#D97706" />
-                                                                </linearGradient>
-                                                            </defs>
-                                                            <path
-                                                                className="text-gray-200"
-                                                                stroke="currentColor"
-                                                                strokeWidth="4"
-                                                                fill="none"
-                                                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                                            />
-                                                            <path
-                                                                stroke="url(#orangeGradient)"
-                                                                strokeWidth="4"
-                                                                strokeLinecap="round"
-                                                                fill="none"
-                                                                strokeDasharray="50, 100"
-                                                                d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                                                            />
-                                                        </svg>
-                                                        <div className="absolute inset-0 flex items-center justify-center">
-                                                            <span className="text-sm font-bold text-orange-600">5</span>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-sm font-medium text-gray-900">Current Streak</p>
-                                                        <p className="text-xs text-gray-600">Days in a row</p>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                            ))}
                                         </div>
                                     </div>
                                 </div>

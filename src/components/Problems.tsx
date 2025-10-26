@@ -80,15 +80,16 @@ const Problems: React.FC<ProblemsProps> = ({ activeTab, onTabChange }) => {
     try {
       setIsLoadingAnalytics(true);
       const response = await apiClient.getAnalytics(user.id) as { success: boolean; data: any };
-      if (response.success && response.data) {
+      if (response.success && response.data?.problemStats) {
+        const s = response.data.problemStats;
         setAnalyticsData({
-          totalProblems: response.data.totalProblems || 0,
-          weeklySolved: response.data.weeklySolved || 0,
-          currentStreak: response.data.currentStreak || 0,
-          successRate: response.data.successRate || 0,
-          weeklyChange: response.data.weeklyChange || 0,
-          streakChange: response.data.streakChange || 0,
-          rateChange: response.data.rateChange || 0,
+          totalProblems: s.totalProblems || 0,
+          weeklySolved: s.weeklySolved || 0,
+          currentStreak: s.currentStreak || 0,
+          successRate: s.successRate || 0,
+          weeklyChange: s.weeklyChange || 0,
+          streakChange: s.streakChange || 0,
+          rateChange: s.rateChange || 0,
         });
       }
     } catch (error) {
